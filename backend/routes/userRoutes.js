@@ -1,24 +1,27 @@
-const router = require('express').Router();
-const { User } = require('../model/User');
-const Transaction = require('../model/Transaction');
-const authMiddleware = require('../middleware/auth');
-const role = require('../middleware/role');
-const { Parser } = require('json2csv');
-const axios = require('axios');
+const router = require("express").Router();
+const { User } = require("../model/User");
+const Transaction = require("../model/Transaction");
+const authMiddleware = require("../middleware/auth");
+const role = require("../middleware/role");
+const { Parser } = require("json2csv");
+const axios = require("axios");
+const { uploadSingle, uploadFile } = require("../controllers/uploadController");
 
 router.get("/profile", authMiddleware, role("user"), async (req, res) => {
-    try {
-        const user = await User.findById(req.user._id).select("-password -UserrefreshToken");
-        if (!user) {
-            return res.status(404).json({ message: "User not found" });
-        }
-        res.json({ user });
-    } catch (error) {
-        res.status(500).json({ message: "Internal Server Error" });
+  try {
+    const user = await User.findById(req.user._id).select(
+      "-password -UserrefreshToken",
+    );
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
     }
+    res.json({ user });
+  } catch (error) {
+    res.status(500).json({ message: "Internal Server Error" });
+  }
 });
 
-router.put('/profile',authMiddleware,role("user"), async (req, res) => {
+router.put("/profile", authMiddleware, role("user"), async (req, res) => {
   try {
     const userId = req.user._id;
     const updates = {};
@@ -28,161 +31,190 @@ router.put('/profile',authMiddleware,role("user"), async (req, res) => {
     if (lastName) updates.lastName = lastName;
 
     if (Object.keys(updates).length === 0) {
-      return res.status(400).json({ message: 'Nothing to update' });
+      return res.status(400).json({ message: "Nothing to update" });
     }
 
     const updatedUser = await User.findByIdAndUpdate(
       userId,
       { $set: updates },
-      { new: true, runValidators: true }
-    ).select('-password -refreshToken');
+      { new: true, runValidators: true },
+    ).select("-password -refreshToken");
 
-    res.status(200).json({ message: 'Profile updated successfully', user: updatedUser });
+    res
+      .status(200)
+      .json({ message: "Profile updated successfully", user: updatedUser });
   } catch (error) {
-    console.error('Error updating profile:', error);
-    res.status(500).json({ message: 'Internal server error' });
+    console.error("Error updating profile:", error);
+    res.status(500).json({ message: "Internal server error" });
   }
 });
 
-router.post('/form-transaction',authMiddleware,role("user"), async (req, res) => {
-  try {
-    console.log("Form Transaction:", req.body);
-    const userId = req.user._id;
-    const {
-      transactionId,
-      transactionTime,
-      ccNum,
-      transactionType,
-      amount,
-      city,
-      userLocation,
-      merchantLocation,
-    } = req.body;
+router.post(
+  "/upload-file",
+  authMiddleware,
+  role("user"),
+  uploadSingle,
+  uploadFile,
+);
 
-    if (!transactionId || !transactionTime || !ccNum || !transactionType || !amount || !city || !userLocation || !merchantLocation ) {
-      return res.status(400).json({ message: "Missing required transaction fields" });
-    }
+router.post(
+  "/form-transaction",
+  authMiddleware,
+  role("user"),
+  async (req, res) => {
+    try {
+      console.log("Form Transaction:", req.body);
+      const userId = req.user._id;
+      const {
+        transactionId,
+        transactionTime,
+        ccNum,
+        transactionType,
+        amount,
+        city,
+        userLocation,
+        merchantLocation,
+      } = req.body;
 
-    // Prepare data for ML API (Flask)
-    const flaskInput = {
-      transactionTime,
-      ccNum,
-      transactionType,
-      amount,
-      city: city || "",
-      userLocation: {
-        lat: userLocation?.lat || 0,
-        lon: userLocation?.lon || 0,
-      },
-      merchantLocation: {
-        lat: merchantLocation?.lat || 0,
-        lon: merchantLocation?.lon || 0,
-      },
-      transactionId
-    };
+      if (
+        !transactionId ||
+        !transactionTime ||
+        !ccNum ||
+        !transactionType ||
+        !amount ||
+        !city ||
+        !userLocation ||
+        !merchantLocation
+      ) {
+        return res
+          .status(400)
+          .json({ message: "Missing required transaction fields" });
+      }
 
-    // Call Flask prediction API
-    const flaskRes = await axios.post('http://localhost:5001/predict', flaskInput);
-    const { is_fraud, confidence, fraud_reason } = flaskRes.data;
+      // Prepare data for ML API (Flask)
+      const flaskInput = {
+        transactionTime,
+        ccNum,
+        transactionType,
+        amount,
+        city: city || "",
+        userLocation: {
+          lat: userLocation?.lat || 0,
+          lon: userLocation?.lon || 0,
+        },
+        merchantLocation: {
+          lat: merchantLocation?.lat || 0,
+          lon: merchantLocation?.lon || 0,
+        },
+        transactionId,
+      };
 
-    if(is_fraud){
-        const fraudCount = await Transaction.countDocuments({ userId, isFraud: true });
+      // Call Flask prediction API
+      const flaskRes = await axios.post(
+        "http://localhost:5001/predict",
+        flaskInput,
+      );
+      const { is_fraud, confidence, fraud_reason } = flaskRes.data;
+
+      if (is_fraud) {
+        const fraudCount = await Transaction.countDocuments({
+          userId,
+          isFraud: true,
+        });
         if (fraudCount > 10) {
-            await User.findByIdAndUpdate(userId, { isBlocked: true });
+          await User.findByIdAndUpdate(userId, { isBlocked: true });
         }
+      }
+      // Save transaction with ML prediction results
+      const newTransaction = new Transaction({
+        userId,
+        transactionId,
+        transactionTime,
+        ccNum,
+        transactionType,
+        amount,
+        city,
+        userLocation,
+        merchantLocation,
+        isFraud: is_fraud,
+        fraudReason: fraud_reason,
+        fraudConfidence: confidence,
+      });
+
+      await newTransaction.save();
+      console.log("Transaction saved:", newTransaction);
+      res.status(201).json({ message: "Transaction reported successfully" });
+    } catch (error) {
+      console.error("Error in /report-fraud:", error.message);
+      res
+        .status(500)
+        .json({ message: "Server error while reporting transaction" });
     }
-    // Save transaction with ML prediction results
-    const newTransaction = new Transaction({
-      userId,
-      transactionId,
-      transactionTime,
-      ccNum,
-      transactionType,
-      amount,
-      city,
-      userLocation,
-      merchantLocation,
-      isFraud: is_fraud,
-      fraudReason: fraud_reason,
-      fraudConfidence: confidence,
-    });
+  },
+);
 
-    await newTransaction.save();
-    console.log("Transaction saved:", newTransaction);
-    res.status(201).json({ message: "Transaction reported successfully" });
-  } catch (error) {
-    console.error("Error in /report-fraud:", error.message);
-    res.status(500).json({ message: "Server error while reporting transaction" });
-  }
-});
-
-
-router.get('/transactions',authMiddleware,role("user"), async (req, res) => {
+router.get("/transactions", authMiddleware, role("user"), async (req, res) => {
   try {
     const userId = req.user._id;
     const transactions = await Transaction.find({ userId })
-      .select('-isFraud -fraudReason -fraudConfidence -__v') 
-      .sort({ transactionTime: -1 }); 
-    console.log("Fetched transactions for user:",transactions.length);
+      .select("-isFraud -fraudReason -fraudConfidence -__v")
+      .sort({ transactionTime: -1 });
+    console.log("Fetched transactions for user:", transactions.length);
     res.status(200).json({ transactions });
   } catch (error) {
-    console.error('Error fetching transactions:', error);
-    res.status(500).json({ message: 'Server error fetching transactions' });
+    console.error("Error fetching transactions:", error);
+    res.status(500).json({ message: "Server error fetching transactions" });
   }
 });
 
-router.get('/download-transactions',authMiddleware, async (req, res) => {
+router.get("/download-transactions", authMiddleware, async (req, res) => {
   try {
     const userId = req.user._id;
 
     const transactions = await Transaction.find({ userId }).lean();
 
     if (!transactions || transactions.length === 0) {
-      return res.status(404).json({ message: 'No transactions found' });
+      return res.status(404).json({ message: "No transactions found" });
     }
 
     // Remove internal fraud details
-    const sanitized = transactions.map(t => ({
+    const sanitized = transactions.map((t) => ({
       transactionId: t.transactionId,
       transactionTime: t.transactionTime,
       ccNum: t.ccNum,
       transactionType: t.transactionType,
       amount: t.amount,
       city: t.city,
-      userLat: t.userLocation?.lat || '',
-      userLon: t.userLocation?.lon || '',
-      merchantLat: t.merchantLocation?.lat || '',
-      merchantLon: t.merchantLocation?.lon || ''
+      userLat: t.userLocation?.lat || "",
+      userLon: t.userLocation?.lon || "",
+      merchantLat: t.merchantLocation?.lat || "",
+      merchantLon: t.merchantLocation?.lon || "",
     }));
 
     // Convert to CSV
     const fields = [
-      'transactionId',
-      'transactionTime',
-      'ccNum',
-      'transactionType',
-      'amount',
-      'city',
-      'userLat',
-      'userLon',
-      'merchantLat',
-      'merchantLon'
+      "transactionId",
+      "transactionTime",
+      "ccNum",
+      "transactionType",
+      "amount",
+      "city",
+      "userLat",
+      "userLon",
+      "merchantLat",
+      "merchantLon",
     ];
     const json2csvParser = new Parser({ fields });
     const csv = json2csvParser.parse(sanitized);
 
     // Set response headers for file download
-    res.header('Content-Type', 'text/csv');
-    res.attachment('my_transactions.csv');
+    res.header("Content-Type", "text/csv");
+    res.attachment("my_transactions.csv");
     return res.send(csv);
-
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: 'Error downloading transactions' });
+    res.status(500).json({ message: "Error downloading transactions" });
   }
 });
 
-
 module.exports = router;
-
-

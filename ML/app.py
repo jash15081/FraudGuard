@@ -1,9 +1,16 @@
 from flask import Flask, request, jsonify
 import pandas as pd
 from datetime import datetime
-from predict import run_inference
 
 app = Flask(__name__)
+
+# Dummy run_inference
+def run_inference(filepath):
+    import random
+    pred_flag = random.choice([0, 1])
+    prob = round(random.uniform(0.1, 0.9), 4)
+    reasons = ["dummy reason"]
+    return pred_flag, prob, reasons
 
 @app.route('/predict', methods=['POST'])
 def preprocess_predict():
@@ -28,7 +35,6 @@ def preprocess_predict():
         df = pd.DataFrame([row])
         df.to_csv('latest_transaction.csv', index=False)
 
-        print("Preprocessed DataFrame:")
         predicted_class, fraud_prob, fraud_reason = run_inference("latest_transaction.csv")
 
         response = {
@@ -41,5 +47,9 @@ def preprocess_predict():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route('/')
+def hello():
+    return "Hello World"
+
 if __name__ == '__main__':
-    app.run(debug=True, port=5001)
+    app.run(port=5002)

@@ -1,23 +1,23 @@
-import React, { useState } from 'react';
- import {jwtDecode} from 'jwt-decode';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import { authAPI } from '../services/api';
-import { 
-  HomeIcon, 
-  UserIcon, 
-  CreditCardIcon, 
+import React, { useState } from "react";
+import { jwtDecode } from "jwt-decode";
+import { motion, AnimatePresence } from "framer-motion";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+import { authAPI } from "../services/api";
+import {
+  HomeIcon,
+  UserIcon,
+  CreditCardIcon,
   ChartBarIcon,
   UsersIcon,
   Cog6ToothIcon,
   ArrowRightOnRectangleIcon,
   Bars3Icon,
   XMarkIcon,
-  ShieldCheckIcon
-} from '@heroicons/react/24/outline';
-import { cn } from '../utils/cn';
-import GlassCard from '../components/ui/GlassCard';
+  ShieldCheckIcon,
+} from "@heroicons/react/24/outline";
+import { cn } from "../utils/cn";
+import GlassCard from "../components/ui/GlassCard";
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -29,35 +29,38 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
- const token = localStorage.getItem('token');
- console.log(token)
-    if (token) {
-      const decoded =  jwtDecode<{ user: { firstName: string; lastName: string;} }>(token);
-      console.log(decoded.role);
-    }
-const state = (() => {
-  try {
-    const token = localStorage.getItem('token');
-    if (token) {
-      const decoded = jwtDecode<{ user: { firstName: string; lastName: string; } }>(token);
-      return {
-        firstName: decoded.firstName,
-        lastName: decoded.lastName,
-        isAdmin: decoded.role == 'admin' ? true : false,
-      };
-    }
-  } catch {
-    // You can optionally log error here
-
+  const token = localStorage.getItem("token");
+  console.log(token);
+  if (token) {
+    const decoded = jwtDecode<{
+      user: { firstName: string; lastName: string };
+    }>(token);
+    console.log(decoded.role);
   }
+  const state = (() => {
+    try {
+      const token = localStorage.getItem("token");
+      if (token) {
+        const decoded = jwtDecode<{
+          user: { firstName: string; lastName: string };
+        }>(token);
+        return {
+          firstName: decoded.firstName,
+          lastName: decoded.lastName,
+          isAdmin: decoded.role == "admin" ? true : false,
+        };
+      }
+    } catch {
+      // You can optionally log error here
+    }
 
-  return {
-    firstName: null,
-    lastName: null,
-    isAdmin: false,
-  };
-})();
-console.log(state.firstName);
+    return {
+      firstName: null,
+      lastName: null,
+      isAdmin: false,
+    };
+  })();
+  console.log(state.firstName);
   const handleLogout = async () => {
     try {
       if (state.isAdmin) {
@@ -66,42 +69,46 @@ console.log(state.firstName);
         await authAPI.userLogout();
       }
       logout();
-      navigate('/login');
+      navigate("/login");
     } catch (error) {
-      console.error('Logout failed:', error);
+      console.error("Logout failed:", error);
       logout();
-      navigate('/login');
+      navigate("/login");
     }
   };
 
   const userNavigation = [
-    { name: 'Dashboard', href: '/dashboard', icon: HomeIcon },
-    { name: 'Profile', href: '/profile', icon: UserIcon },
-    { name: 'Transactions', href: '/transactions', icon: CreditCardIcon },
-    { name: 'New Transaction', href: '/transaction/new', icon: CreditCardIcon },
+    { name: "Dashboard", href: "/dashboard", icon: HomeIcon },
+    { name: "Profile", href: "/profile", icon: UserIcon },
+    { name: "Transactions", href: "/transactions", icon: CreditCardIcon },
+    { name: "Upload Files", href: "/upload-files", icon: Cog6ToothIcon },
+    { name: "New Transaction", href: "/transaction/new", icon: CreditCardIcon },
   ];
 
   const adminNavigation = [
-    { name: 'Dashboard', href: '/admin/dashboard', icon: HomeIcon },
-    { name: 'Users', href: '/admin/users', icon: UsersIcon },
-    { name: 'Transactions', href: '/admin/transactions', icon: CreditCardIcon },
-    { name: 'Statistics', href: '/admin/statistics', icon: ChartBarIcon },
+    { name: "Dashboard", href: "/admin/dashboard", icon: HomeIcon },
+    { name: "Users", href: "/admin/users", icon: UsersIcon },
+    { name: "Transactions", href: "/admin/transactions", icon: CreditCardIcon },
+    { name: "Statistics", href: "/admin/statistics", icon: ChartBarIcon },
+    { name: "Upload Files", href: "/upload-files", icon: Cog6ToothIcon },
   ];
 
   const navigation = state.isAdmin ? adminNavigation : userNavigation;
 
   const Sidebar = ({ mobile = false }) => (
-    <div className={cn(
-      'flex flex-col h-full',
-      mobile ? 'w-full' : 'w-64'
-    )}>
+    <div className={cn("flex flex-col h-full", mobile ? "w-full" : "w-64")}>
       {/* Logo */}
       <div className="flex items-center justify-center h-20 px-6 m-4">
-        <Link to={state.isAdmin ? '/admin/dashboard' : '/dashboard'} className="flex items-center space-x-3">
+        <Link
+          to={state.isAdmin ? "/admin/dashboard" : "/dashboard"}
+          className="flex items-center space-x-3"
+        >
           <div className="p-2 bg-primary-gradient rounded-xl">
             <ShieldCheckIcon className="h-8 w-8 text-white" />
           </div>
-          <span className="text-2xl font-bold text-gradient font-display">FraudGuard</span>
+          <span className="text-2xl font-bold text-gradient font-display">
+            FraudGuard
+          </span>
         </Link>
       </div>
 
@@ -114,10 +121,10 @@ console.log(state.firstName);
               key={item.name}
               to={item.href}
               className={cn(
-                'flex items-center px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200',
+                "flex items-center px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200",
                 isActive
-                  ? 'bg-primary-gradient text-white shadow-lg'
-                  : 'text-white/70 hover:text-white hover:bg-white/10'
+                  ? "bg-primary-gradient text-white shadow-lg"
+                  : "text-white/70 hover:text-white hover:bg-white/10",
               )}
               onClick={() => mobile && setSidebarOpen(false)}
             >
@@ -129,7 +136,7 @@ console.log(state.firstName);
       </nav>
 
       {/* User Info */}
-      <div >
+      <div>
         <GlassCard className="p-4">
           <div className="flex items-center space-x-3">
             <div className="h-10 w-10 bg-primary-gradient rounded-full flex items-center justify-center">
@@ -140,7 +147,7 @@ console.log(state.firstName);
                 {state?.firstName} {state?.lastName}
               </p>
               <p className="text-xs text-white/60 truncate">
-                {state.isAdmin ? 'Administrator' : 'User'}
+                {state.isAdmin ? "Administrator" : "User"}
               </p>
             </div>
           </div>
@@ -156,7 +163,6 @@ console.log(state.firstName);
     </div>
   );
 
-  
   return (
     <div className="min-h-screen bg-dark-gradient">
       {/* Desktop Sidebar */}
@@ -184,7 +190,7 @@ console.log(state.firstName);
               initial={{ x: -256 }}
               animate={{ x: 0 }}
               exit={{ x: -256 }}
-              transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+              transition={{ type: "spring", stiffness: 300, damping: 30 }}
             >
               <GlassCard className="h-full m-4 overflow-hidden">
                 <Sidebar mobile />
@@ -209,7 +215,9 @@ console.log(state.firstName);
               <div className="p-2 bg-primary-gradient rounded-xl">
                 <ShieldCheckIcon className="h-6 w-6 text-white" />
               </div>
-              <span className="text-xl font-bold text-gradient font-display">FraudGuard</span>
+              <span className="text-xl font-bold text-gradient font-display">
+                FraudGuard
+              </span>
             </div>
             <div className="w-10" /> {/* Spacer */}
           </div>

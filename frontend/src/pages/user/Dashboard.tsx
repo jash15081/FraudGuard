@@ -1,46 +1,48 @@
-import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { 
-  CreditCardIcon, 
-  PlusIcon, 
+import React, { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import { motion } from "framer-motion";
+import {
+  CreditCardIcon,
+  PlusIcon,
   ArrowTrendingUpIcon,
   ClockIcon,
   CheckCircleIcon,
-  ExclamationTriangleIcon
-} from '@heroicons/react/24/outline';
-import { userAPI } from '../../services/api';
-import { useAuth } from '../../context/AuthContext';
-import MainLayout from '../../layouts/MainLayout';
-import GlassCard from '../../components/ui/GlassCard';
-import AnimatedButton from '../../components/ui/AnimatedButton';
-import LoadingSpinner from '../../components/ui/LoadingSpinner';
-import { DashboardData } from '../../types';
-import { format } from 'date-fns';
+  ExclamationTriangleIcon,
+} from "@heroicons/react/24/outline";
+import { userAPI } from "../../services/api";
+import { useAuth } from "../../context/AuthContext";
+import MainLayout from "../../layouts/MainLayout";
+import GlassCard from "../../components/ui/GlassCard";
+import AnimatedButton from "../../components/ui/AnimatedButton";
+import LoadingSpinner from "../../components/ui/LoadingSpinner";
+import { DashboardData } from "../../types";
+import { format } from "date-fns";
 
 const Dashboard: React.FC = () => {
   const { state } = useAuth();
-  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
+  const [dashboardData, setDashboardData] = useState<DashboardData | null>(
+    null,
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
         const response = await userAPI.getDashboard();
-        console.log("data",response.data);
+        console.log("data", response.data);
         setDashboardData(response.data);
       } catch (err) {
-        setError('Failed to load dashboard data');
+        setError("Failed to load dashboard data");
         console.error(err);
       } finally {
         setLoading(false);
       }
     };
-    
+
     fetchDashboardData();
   }, []);
-  
+
   if (loading) {
     return (
       <MainLayout>
@@ -50,7 +52,7 @@ const Dashboard: React.FC = () => {
       </MainLayout>
     );
   }
-  
+
   return (
     <MainLayout>
       <div className="space-y-8">
@@ -62,7 +64,11 @@ const Dashboard: React.FC = () => {
           transition={{ duration: 0.5 }}
         >
           <h1 className="text-4xl font-bold text-white font-display mb-2">
-            Welcome back, <span className="text-gradient">{dashboardData?.firstName || 'User'}</span>!
+            Welcome back,{" "}
+            <span className="text-gradient">
+              {dashboardData?.firstName || "User"}
+            </span>
+            !
           </h1>
           <p className="text-white/60 text-lg">
             Monitor your transactions and account activity
@@ -119,7 +125,6 @@ const Dashboard: React.FC = () => {
               </div>
             </GlassCard>
           </motion.div>
-
         </div>
 
         {/* Recent Transactions */}
@@ -130,7 +135,9 @@ const Dashboard: React.FC = () => {
         >
           <GlassCard>
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-white font-display">Recent Transactions</h2>
+              <h2 className="text-2xl font-bold text-white font-display">
+                Recent Transactions
+              </h2>
               <Link to="/transactions">
                 <AnimatedButton variant="ghost" size="sm">
                   View All
@@ -138,50 +145,58 @@ const Dashboard: React.FC = () => {
               </Link>
             </div>
 
-            {dashboardData?.recentTransactions && dashboardData.recentTransactions.length > 0 ? (
+            {dashboardData?.recentTransactions &&
+            dashboardData.recentTransactions.length > 0 ? (
               <div className="space-y-4">
-                {dashboardData.recentTransactions.slice(0, 5).map((transaction, index) => (
-                  <motion.div
-                    key={transaction._id}
-                    className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/10 hover:bg-white/10 transition-all duration-200"
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.3, delay: index * 0.1 }}
-                  >
-                    <div className="flex items-center space-x-4">
-                      <div className={`p-2 rounded-lg ${
-                          'bg-green-500/20 text-green-400'
-                      }`}>
-                        { false ? (
-                          <ExclamationTriangleIcon className="h-5 w-5" />
-                        ) : (
-                          <CheckCircleIcon className="h-5 w-5" />
-                        )}
+                {dashboardData.recentTransactions
+                  .slice(0, 5)
+                  .map((transaction, index) => (
+                    <motion.div
+                      key={transaction._id}
+                      className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/10 hover:bg-white/10 transition-all duration-200"
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ duration: 0.3, delay: index * 0.1 }}
+                    >
+                      <div className="flex items-center space-x-4">
+                        <div
+                          className={`p-2 rounded-lg ${"bg-green-500/20 text-green-400"}`}
+                        >
+                          {false ? (
+                            <ExclamationTriangleIcon className="h-5 w-5" />
+                          ) : (
+                            <CheckCircleIcon className="h-5 w-5" />
+                          )}
+                        </div>
+                        <div>
+                          <p className="text-white font-medium">
+                            {transaction.transactionId}
+                          </p>
+                          <p className="text-white/60 text-sm">
+                            {format(
+                              new Date(transaction.transactionTime),
+                              "MMM d, yyyy h:mm a",
+                            )}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-white font-medium">
-                          {transaction.transactionId}
+                      <div className="text-right">
+                        <p className="text-white font-semibold">
+                          ${transaction.amount.toFixed(2)}
                         </p>
-                        <p className="text-white/60 text-sm">
-                          {format(new Date(transaction.transactionTime), 'MMM d, yyyy h:mm a')}
+                        <p className="text-white/60 text-sm capitalize">
+                          {transaction.transactionType}
                         </p>
                       </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-white font-semibold">
-                        ${transaction.amount.toFixed(2)}
-                      </p>
-                      <p className="text-white/60 text-sm capitalize">
-                        {transaction.transactionType}
-                      </p>
-                    </div>
-                  </motion.div>
-                ))}
+                    </motion.div>
+                  ))}
               </div>
             ) : (
               <div className="text-center py-12">
                 <CreditCardIcon className="h-16 w-16 text-white/20 mx-auto mb-4" />
-                <p className="text-white/60 text-lg mb-4">No transactions yet</p>
+                <p className="text-white/60 text-lg mb-4">
+                  No transactions yet
+                </p>
                 <Link to="/transaction/new">
                   <AnimatedButton
                     variant="primary"
